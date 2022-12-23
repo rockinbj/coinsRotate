@@ -59,6 +59,7 @@ def sendReport(exchange, interval=REPORT_INTERVAL):
     nowMinute = dt.datetime.now().minute
     nowSecond = dt.datetime.now().second
     if (nowMinute%interval==0) and (nowSecond==47):
+        logger.debug("开始发送报告")
         pos = getOpenPosition(exchange)
         pos = pos[["notional", "percentage", "unrealizedPnl", "entryPrice", "markPrice", "liquidationPrice", "datetime", "side", "leverage", "marginMode", ]]
         pos.rename(columns={
