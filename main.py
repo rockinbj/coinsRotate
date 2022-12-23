@@ -1,3 +1,4 @@
+import asyncio
 import time
 from functools import partial
 from multiprocessing import Pool, cpu_count
@@ -16,11 +17,18 @@ pd.set_option("display.unicode.east_asian_width", True)
 logger = logging.getLogger("app.main")
 
 
-def main():
+async def reporter(exchange):
+    while True:
+        sendReport(exchange, interval=REPORT_INTERVAL)
+        await asyncio.sleep(0.5)
+
+
+async def main():
+
     ex = getattr(ccxt, EXCHANGE)(EXCHANGE_CONFIG)
     
     # 开启异步状态报告进程
-    # ……
+    future = asyncio.ensure_future(reporter(exchange=ex))
     
     # 开始运行策略
     while True:
@@ -28,24 +36,24 @@ def main():
         tickers = getTickers(exchange=ex)
         markets = getMarkets(ex)
         logger.info(f"获取到所有币种列表,共{len(tickers)}种")
-        time.sleep(SLEEP_LONG)
+        await asyncio.sleep(SLEEP_LONG)
         
         # 提取TOP币种List
         symbols = getTopN(tickers, rule=RULE, _type=TYPE, n=TOP)
         logger.info(f"获取到{TYPE} TOP{TOP}币种:\n{symbols}")
-        time.sleep(SLEEP_LONG)
+        await asyncio.sleep(SLEEP_LONG)
         
         # 获取当前持仓情况
         openPosition = getOpenPosition(ex)
         # logger.debug(f"openPosition:\n{openPosition}")
         logger.info(f'获取到当前持仓情况:\n{openPosition[["notional", "unrealizedPnl", "leverage", "percentage", "entryPrice", "markPrice", "liquidationPrice", ]]}')
-        time.sleep(SLEEP_LONG)
+        await asyncio.sleep(SLEEP_LONG)
 
         # 获取各币种的历史k线,dict:{symbols: kline_df}
         kHistory = getKlines(exchangeId=EXCHANGE, symbols=symbols, level=LEVEL, amount=PERIOD)
         # logger.debug(f"kHistory:\n{kHistory}")
         logger.info(f"获取到所有TOP币种历史k线,共{sum(map(len, kHistory.values()))}根")
-        time.sleep(SLEEP_LONG)
+        await asyncio.sleep(SLEEP_LONG)
 
         # 等待当前k线收盘
         sleepToClose(level=LEVEL, aheadSeconds=AHEAD_SEC)
@@ -70,18 +78,14 @@ def main():
         if sig:
             logger.info(f"本周期出现交易信号,开始下单！")
             orderList = placeOrder(ex, sig, markets)
-            sendAndPrintInfo(f"订单执行成功：{orderList}")
+            if orderList: sendAndPrintInfo(f"订单执行成功：{orderList}")
+
         elif sig==0:
             logger.info(f"所有币种因子均小于0,本周期空仓。")
             orderList = closePosition(ex, openPosition)
             if orderList: sendAndPrintInfo(f"订单执行成功：{orderList}")
-
-
-        # 下单后更新持仓状态,发送报告
-
-
-
-
+        
+        await asyncio.sleep(SLEEP_LONG)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

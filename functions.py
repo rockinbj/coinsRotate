@@ -1,5 +1,6 @@
 import datetime as dt
 import time
+import asyncio
 from functools import reduce
 
 import ccxt
@@ -54,26 +55,33 @@ def sendAndRaise(msg):
     raise RuntimeError(msg)
 
 
-def sendReport(exchange, symbolMarkets, interval=REPORT_INTERVAL):
-    symbolInfoList = pd.DataFrame()
+def sendReport(exchange, interval=REPORT_INTERVAL):
     nowMinute = dt.datetime.now().minute
     nowSecond = dt.datetime.now().second
     if (nowMinute%interval==0) and (nowSecond==47):
-        for symbolConfig in SYMBOLS_CONFIG:
-            symbol = symbolConfig["symbol"]
-            mkt = symbolMarkets[symbol]
-            symbolInfo = getSymbolInfo(exchange, symbol, mkt)
-            symbolInfoList = pd.concat([symbolInfoList, symbolInfo])
-        
-        symbolInfoList.fillna("-", inplace=True)
-        siDict = symbolInfoList.to_dict(orient="index")
-        msg = ""
-        for symbol in siDict.keys():
-            msg += f"{symbol}:\n"
-            for k,v in siDict[symbol].items():
-                msg += f"    {k}: {v}\n"
+        pos = getOpenPosition(exchange)
+        pos = pos[["notional", "percentage", "unrealizedPnl", "entryPrice", "markPrice", "liquidationPrice", "datetime", "side", "leverage", "marginMode", ]]
+        pos.rename(columns={
+            "percentage": "盈亏比例(%)",
+            "unrealizedPnl": "未实现盈亏(U)",
+            "leverage": "杠杆倍数",
+            "liquidationPrice": "爆仓价格(U)",
+            "notional": "持仓价值(U)",
+            "markPrice": "标记价格(U)",
+            "entryPrice": "开仓价格(U)",
+            "datetime": "开仓时间",
+            "marginMode": "保证金模式",
+            "side": "持仓方向",
+            
+        }, inplace=True)
+        d = pos.iloc[0].to_dict()
 
-        sendMixin(f"{'=='*3}持仓报告{'=='*3}\n\n{msg}")
+        msg = "### 后宫50策略 - 持仓报告\n"
+        msg += f"#### 当前持仓：{pos.iloc[0].name}\n"
+        for name,value in d.items():
+            msg += f" - {name}:    {value}\n"
+
+        sendMixin(msg, _type="PLAIN_POST")
 
 
 def secondsToNext(exchange, level):
@@ -471,5 +479,7 @@ if __name__ == "__main__":
     ex = ccxt.binance(EXCHANGE_CONFIG)
     markets = getMarkets(ex)
     symbol="BTC/USDT"
-    r = getOpenPosition(ex)
-    print(r.iloc[0]["info"]["symbol"])
+    while True:
+        sendReport(ex)
+        time.sleep(1)
+        print("running...")
