@@ -54,14 +54,18 @@ def sendAndRaise(msg):
     raise RuntimeError(msg)
 
 
-def sendReport(exchange, interval=REPORT_INTERVAL):
+def sendReport(exchangeId, interval=REPORT_INTERVAL):
+    exchange = getattr(ccxt, exchangeId)(EXCHANGE_CONFIG)
 
     nowMinute = dt.datetime.now().minute
     nowSecond = dt.datetime.now().second
 
     if (nowMinute%interval==0) and (nowSecond==47):
-        msg = f"### <后宫50>策略报告\n\n"
+        logger.debug("开始发送报告")
+        msg = f"### 后宫50 - 策略报告\n\n"
         pos = getOpenPosition(exchange)
+        bTot, bBal, bPos = getBalances(exchange)
+        bal = round(float(bTot.iloc[0]["availableBalance"]),2)
         if pos.shape[0] > 0:
             pos = pos[[
                 "notional",
@@ -89,9 +93,10 @@ def sendReport(exchange, interval=REPORT_INTERVAL):
             }, inplace=True)
             d = pos.iloc[0].to_dict()
 
+            msg += f"#### 账户余额:&emsp;{bal}U\n\n"
+            msg += f"#### 当前持币:&emsp;{pos.iloc[0].name}\n\n"
             for name,value in d.items():
-                msg += f"#### 当前持币 {pos.iloc[0].name}\n\n"
-                msg += f"  - {name}: {value}\n"
+                msg += f"  - {name}:&emsp;{value}\n"
 
         else:
             msg += "#### 当前空仓\n\n"
@@ -494,5 +499,7 @@ if __name__ == "__main__":
     ex = ccxt.binance(EXCHANGE_CONFIG)
     markets = getMarkets(ex)
     symbol="BTC/USDT"
-    r = getOpenPosition(ex)
-    print(r.iloc[0]["info"]["symbol"])
+    # t1, t2, t3 = getBalances(ex)
+    # print(t1.iloc[0]['availableBalance'])
+    while True:
+        sendReport(ex, REPORT_INTERVAL)

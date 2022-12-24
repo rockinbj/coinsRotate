@@ -51,7 +51,7 @@ LOG_LEVEL_FILE = logging.DEBUG
 # 发送MIXIN报告
 MIXIN_TOKEN = "mrbXSz6rSoQjtrVnDlOH9ogK8UubLdNKClUgx1kGjGoq39usdEzbHlwtFIvHHO3C"
 # 报告发送间隔分钟
-REPORT_INTERVAL = 30
+REPORT_INTERVAL = 1
 
 # 休眠时间
 SLEEP_SHORT = 0.5

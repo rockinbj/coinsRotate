@@ -16,11 +16,18 @@ pd.set_option("display.unicode.east_asian_width", True)
 logger = logging.getLogger("app.main")
 
 
+def reporter(exchangeId, interval):
+    while True:
+        sendReport(exchangeId, interval)
+        time.sleep(0.5)
+
+
 def main():
     ex = getattr(ccxt, EXCHANGE)(EXCHANGE_CONFIG)
-    
-    # 开启异步状态报告进程
-    # ……
+
+    # 开启一个非阻塞的报告进程
+    rptpool = Pool(1)
+    rptpool.apply_async(reporter, args=(EXCHANGE, REPORT_INTERVAL))
     
     # 开始运行策略
     while True:
