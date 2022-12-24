@@ -85,7 +85,7 @@ def main():
 
 
         # 下单后更新持仓状态,发送报告
-
+        time.sleep(SLEEP_LONG)
 
 
 

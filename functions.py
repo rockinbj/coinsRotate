@@ -496,6 +496,7 @@ def closePosition(exchange, openPositions):
 
 
 if __name__ == "__main__":
+    ## for test only
     ex = ccxt.binance(EXCHANGE_CONFIG)
     markets = getMarkets(ex)
     symbol="BTC/USDT"
