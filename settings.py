@@ -2,8 +2,8 @@
 STRATEGY_NAME = "无右"
 
 # 轮动池黑白名单,格式"BTC/USDT"
-SYMBOLS_WHITE = ["QNT/USDT"]
-SYMBOLS_BLACK = ["BTC/USDT"]
+SYMBOLS_WHITE = []
+SYMBOLS_BLACK = []
 
 
 # 选币算法
@@ -16,7 +16,7 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 50
 # 4h级别20根k线
-LEVEL = "1m"
+LEVEL = "1h"
 PERIOD = 20
 # 杠杆倍数
 LEVERAGE = 1
@@ -50,7 +50,7 @@ LOG_LEVEL_FILE = logging.DEBUG
 # 发送MIXIN报告
 MIXIN_TOKEN = "mrbXSz6rSoQjtrVnDlOH9ogK8UubLdNKClUgx1kGjGoq39usdEzbHlwtFIvHHO3C"
 # 报告发送间隔分钟
-REPORT_INTERVAL = 1
+REPORT_INTERVAL = 30
 
 # 休眠时间
 SLEEP_SHORT = 0.5

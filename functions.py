@@ -26,7 +26,7 @@ logger = logging.getLogger("app.func")
 def sendMixin(msg, _type="PLAIN_TEXT"):
     token = MIXIN_TOKEN
     url = f"https://webhook.exinwork.com/api/send?access_token={token}"
-    title = "### coinsRotate消息\n"
+
     value = {
         'category': _type,
         'data': msg,
@@ -62,10 +62,13 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
 
     if (nowMinute%interval==0) and (nowSecond==47):
         logger.debug("开始发送报告")
-        msg = f"### {STRATEGY_NAME} - 策略报告\n\n"
+
         pos = getOpenPosition(exchange)
         bTot, bBal, bPos = getBalances(exchange)
         bal = round(float(bTot.iloc[0]["availableBalance"]),2)
+
+        msg = f"### {STRATEGY_NAME} - 策略报告\n\n"
+
         if pos.shape[0] > 0:
             pos = pos[[
                 "notional",
@@ -93,18 +96,19 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
             }, inplace=True)
             d = pos.iloc[0].to_dict()
 
-            msg += f"#### 轮动数量 : {TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n"
-            msg += f"#### 策略级别 : {LEVEL}\n"
-            msg += f"#### 策略周期 : {PERIOD}\n"
-            msg += f"#### 账户余额 : {bal}U\n"
-            msg += f"#### 使用上限 : {MAX_BALANCE*100}%\n"
             msg += f"#### 当前持币 : {pos.iloc[0].name}\n"
             for name,value in d.items():
                 msg += f"  - {name} : {value}\n"
 
         else:
-            msg += "#### 当前空仓\n\n"
+            msg += "#### 当前空仓\n"
         
+        msg += f"#### 轮动数量 : {TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n"
+        msg += f"#### 策略级别 : {LEVEL}\n"
+        msg += f"#### 策略周期 : {PERIOD}\n"
+        msg += f"#### 账户余额 : {bal}U\n"
+        msg += f"#### 使用上限 : {MAX_BALANCE*100}%\n"
+
         sendMixin(msg, _type="PLAIN_POST")
 
 
