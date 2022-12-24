@@ -39,9 +39,12 @@ def main():
         logger.info(f"获取到所有币种列表,共{len(tickers)}种")
         time.sleep(SLEEP_LONG)
         
-        # 提取TOP币种List
+        # 提取TOP币种List,合并黑白名单
         symbols = getTopN(tickers, rule=RULE, _type=TYPE, n=TOP)
-        logger.info(f"获取到{TYPE} TOP{TOP}币种:\n{symbols}")
+        symbols += SYMBOLS_WHITE
+        [symbols.remove(s) for s in SYMBOLS_BLACK if s in symbols]
+        symbols = list(set(symbols))
+        logger.info(f"获取到{TYPE} TOP{TOP}币种,合并黑白名单后,共{len(symbols)}种:\n{symbols}")
         time.sleep(SLEEP_LONG)
         
         # 获取当前持仓情况
