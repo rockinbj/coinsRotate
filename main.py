@@ -82,7 +82,7 @@ def main():
         if sig:
             logger.info(f"本周期出现交易信号,开始下单！")
             orderList = placeOrder(ex, sig, markets)
-            sendAndPrintInfo(f"本周期出现交易信号:{sig}\n,订单执行成功：\n{orderList}")
+            sendAndPrintInfo(f"本周期出现交易信号:{sig}\n\n,订单执行成功：\n{orderList}")
         elif sig==0:
             logger.info(f"所有币种因子均小于0,本周期空仓。")
             orderList = closePosition(ex, openPosition)

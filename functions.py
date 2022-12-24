@@ -93,14 +93,14 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
             }, inplace=True)
             d = pos.iloc[0].to_dict()
 
-            msg += f"#### 轮动数量:&emsp;{TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n\n"
-            msg += f"#### 策略级别:&emsp;{LEVEL}\n\n"
-            msg += f"#### 策略周期:&emsp;{PERIOD}\n\n"
-            msg += f"#### 账户余额:&emsp;{bal}U\n\n"
-            msg += f"#### 使用上限:&emsp;{MAX_BALANCE*100}%\n\n"
-            msg += f"#### 当前持币:&emsp;{pos.iloc[0].name}\n\n"
+            msg += f"#### 轮动数量 : {TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n"
+            msg += f"#### 策略级别 : {LEVEL}\n"
+            msg += f"#### 策略周期 : {PERIOD}\n"
+            msg += f"#### 账户余额 : {bal}U\n"
+            msg += f"#### 使用上限 : {MAX_BALANCE*100}%\n"
+            msg += f"#### 当前持币 : {pos.iloc[0].name}\n"
             for name,value in d.items():
-                msg += f"  - {name}:&emsp;{value}\n"
+                msg += f"  - {name} : {value}\n"
 
         else:
             msg += "#### 当前空仓\n\n"

@@ -1,9 +1,9 @@
 # 策略命名
 STRATEGY_NAME = "五十榜"
 
-# 轮动池黑白名单
-SYMBOLS_WHITE = []
-SYMBOLS_BLACK = []
+# 轮动池黑白名单,格式"BTC/USDT"
+SYMBOLS_WHITE = ["QNT/USDT"]
+SYMBOLS_BLACK = ["BTC/USDT"]
 
 
 # 选币算法
@@ -16,7 +16,7 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 50
 # 4h级别20根k线
-LEVEL = "1h"
+LEVEL = "1m"
 PERIOD = 20
 # 杠杆倍数
 LEVERAGE = 1
