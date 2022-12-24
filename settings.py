@@ -1,10 +1,9 @@
-# 读取币种轮动池
-# SYMBOLS = ["BTC", "ETH"]
-SYMBOLS = ["BTC", "ETH", "DOGE", "BNB"]
-# 轮动池文件
-import os
-DATA_PATH = "data"
-SYMBOLS_FILE = os.path.join(DATA_PATH, "SYMBOLS.src")
+# 策略命名
+STRATEGY_NAME = "五十榜"
+
+# 轮动池黑白名单
+SYMBOLS_WHITE = []
+SYMBOLS_BLACK = []
 
 
 # 选币算法

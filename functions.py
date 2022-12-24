@@ -62,7 +62,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
 
     if (nowMinute%interval==0) and (nowSecond==47):
         logger.debug("开始发送报告")
-        msg = f"### 后宫50 - 策略报告\n\n"
+        msg = f"### {STRATEGY_NAME} - 策略报告\n\n"
         pos = getOpenPosition(exchange)
         bTot, bBal, bPos = getBalances(exchange)
         bal = round(float(bTot.iloc[0]["availableBalance"]),2)
@@ -93,7 +93,11 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
             }, inplace=True)
             d = pos.iloc[0].to_dict()
 
+            msg += f"#### 轮动数量:&emsp;{TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n\n"
+            msg += f"#### 策略级别:&emsp;{LEVEL}\n\n"
+            msg += f"#### 策略周期:&emsp;{PERIOD}\n\n"
             msg += f"#### 账户余额:&emsp;{bal}U\n\n"
+            msg += f"#### 使用上限:&emsp;{MAX_BALANCE*100}%\n\n"
             msg += f"#### 当前持币:&emsp;{pos.iloc[0].name}\n\n"
             for name,value in d.items():
                 msg += f"  - {name}:&emsp;{value}\n"
