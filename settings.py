@@ -1,5 +1,5 @@
 # 策略命名
-STRATEGY_NAME = "五十榜"
+STRATEGY_NAME = "无右"
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = ["QNT/USDT"]
