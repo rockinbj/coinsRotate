@@ -14,10 +14,10 @@ FACTOR = "signalMomentum"
 # 只选取USDT交易对的成交量top3
 RULE = "/USDT"
 TYPE = "quoteVolume"
-TOP = 50
+TOP = 100
 # 4h级别20根k线
 LEVEL = "1h"
-PERIOD = 20
+PERIOD = 24
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 5 / 100
 # 杠杆倍数
