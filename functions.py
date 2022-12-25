@@ -317,7 +317,7 @@ def getSignal(klines, openPosition, factor, para):
 
     # 根据factor选币
     # 如果最大涨幅都小于0，那么空仓
-    if dfAll.iloc[-1].filter(like="factor").max()<0: return 0
+    if dfAll.iloc[-1].filter(like="factor").max() < MIN_CHANGE: return 0
 
     # .idxmax(axis=1)选取一行中的最大值的列名，即选取最大factor的币种
     # 列名如ETH_factor，用replace把_factor去掉

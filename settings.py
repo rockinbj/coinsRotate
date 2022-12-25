@@ -1,5 +1,5 @@
 # 策略命名
-STRATEGY_NAME = "无右"
+STRATEGY_NAME = "鹤"
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = []
@@ -18,6 +18,8 @@ TOP = 50
 # 4h级别20根k线
 LEVEL = "1h"
 PERIOD = 20
+# 涨幅下限，小于此空仓
+MIN_CHANGE = 5 / 100
 # 杠杆倍数
 LEVERAGE = 1
 # 交易安全滑点
