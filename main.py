@@ -41,9 +41,12 @@ def main():
         
         # 提取TOP币种List,合并黑白名单
         symbols = getTopN(tickers, rule=RULE, _type=TYPE, n=TOP)
-        symbols += SYMBOLS_WHITE
-        [symbols.remove(s) for s in SYMBOLS_BLACK if s in symbols]
-        symbols = list(set(symbols))
+        # symbols += SYMBOLS_WHITE
+        # [symbols.remove(s) for s in SYMBOLS_BLACK if s in symbols]
+        # symbols = list(set(symbols))
+        symbols = set(symbols) + set(SYMBOLS_WHITE) - set(SYMBOLS_BLACK)
+        symbols = list(symbols)
+
         logger.info(f"获取到{TYPE} TOP{TOP}币种,合并黑白名单后,共{len(symbols)}种:\n{symbols}")
         time.sleep(SLEEP_LONG)
         
