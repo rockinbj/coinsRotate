@@ -16,16 +16,16 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 100
 # 4h级别20根k线
-LEVEL = "1h"
-PERIOD = 24
+LEVEL = "4h"
+PERIOD = 6
 # 涨幅下限，小于此空仓
-MIN_CHANGE = 5 / 100
+MIN_CHANGE = 0 / 100
 # 杠杆倍数
-LEVERAGE = 1
+LEVERAGE = 2
 # 交易安全滑点
 SLIPPAGE = 1 / 100
 # 余额使用上限
-MAX_BALANCE = 98 / 100
+MAX_BALANCE = 90 / 100
 
 
 # 本轮开始之前的预留秒数，小于预留秒数则顺延至下轮
