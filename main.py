@@ -47,7 +47,7 @@ def main():
         symbols = (set(symbols) | set(SYMBOLS_WHITE)) - set(SYMBOLS_BLACK)
         symbols = list(symbols)
 
-        logger.info(f"获取到{TYPE} TOP{TOP}币种,合并黑白名单后,共{len(symbols)}种:\n{symbols}")
+        logger.info(f"获取到{TYPE} TOP{TOP}币种,\n白名单：{SYMBOLS_WHITE}\n黑名单：{SYMBOLS_BLACK}\n合并黑白名单后,共{len(symbols)}种:\n{symbols}")
         time.sleep(SLEEP_LONG)
         
         # 获取当前持仓情况

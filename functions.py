@@ -131,7 +131,7 @@ def nextStartTime(level, ahead_seconds=3):
     elif level.endswith('H'):
         level = level.replace('H', 'h')
     else:
-        sendAndRaise("level格式错误。程序退出。")
+        sendAndRaise(f"{STRATEGY_NAME}: level格式错误。程序退出。")
 
     ti = pd.to_timedelta(level)
     now_time = dt.datetime.now()
@@ -170,7 +170,7 @@ def getMarkets(exchange):
         return mks
     except Exception as e:
         logger.exception(e)
-        sendAndRaise(e)
+        sendAndRaise(f"{STRATEGY_NAME}: getMarkets()错误，程序退出。{e}")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
@@ -182,7 +182,7 @@ def getTickers(exchange):
         return tk
     except Exception as e:
         logger.exception(e)
-        sendAndRaise(e)
+        sendAndRaise(f"{STRATEGY_NAME}: getTickers()错误，程序退出。{e}")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
@@ -194,7 +194,7 @@ def getTicker(exchange, symbol):
         return tk
     except Exception as e:
         logger.exception(e)
-        sendAndRaise(e)
+        sendAndRaise(f"{STRATEGY_NAME}: getTicker()错误，程序退出。{e}")
 
 
 def getTopN(tickers, rule="/USDT", _type="quoteVolume", n=50):
@@ -223,7 +223,7 @@ def getBalances(exchange):
         return total, balances, positions
     except Exception as e:
         logger.exception(e)
-        sendAndRaise(e)
+        sendAndRaise(f"{STRATEGY_NAME}: getBalances()错误，程序退出。{e}")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
@@ -258,7 +258,7 @@ def getKlines(exchangeId, level, amount, symbols):
 
 def combineK(kHistory, kNew):
     if kHistory.keys() != kNew.keys():
-        sendAndRaise("combineK()报错：历史k线与最新k线的symbols不一致，请检查。退出。")
+        sendAndRaise(f"{STRATEGY_NAME}: combineK()报错：历史k线与最新k线的symbols不一致，请检查。退出。")
     
     kAll = dict.fromkeys(kHistory.keys())
     for symbol in kHistory.keys():
@@ -283,7 +283,7 @@ def getPositions(exchange):
         return p
     except Exception as e:
         logger.exception(e)
-        sendAndRaise(e)
+        sendAndRaise(f"{STRATEGY_NAME}: getPositions()错误，程序退出。{e}")
 
 
 def getOpenPosition(exchange):
@@ -442,7 +442,7 @@ def placeOrder(exchange, signal, markets):
             orderId = orderInfo["orderId"]
         except Exception as e:
             logger.exception(e)
-            sendAndPrintError(e)
+            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()下单出错，请检查。{e}")
 
         time.sleep(SLEEP_SHORT)
                 
@@ -457,7 +457,7 @@ def placeOrder(exchange, signal, markets):
                 break
             else:
                 if i == MAX_TRY - 1:
-                    sendAndPrintError("placeOrder()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
+                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
                 time.sleep(SLEEP_SHORT)
     
     # 下跟踪止盈单
@@ -465,7 +465,9 @@ def placeOrder(exchange, signal, markets):
         try:
             symbol = signal[1]
             symbolId = markets.loc[symbol, "id"]
-            quantity = exchange.fetchPositions(symbol)[1]["contracts"]
+            r = exchange.fetchPositions([symbol])
+            quantity = r[0]["contracts"]  # one-way mode单向持仓模式时
+            # quantity = r[1]["contracts"]  # hedge mode双向持仓模式时
             quantity = exchange.amount_to_precision(symbol, quantity)
             tpPara = {
                 "symbol": symbolId,
@@ -477,7 +479,7 @@ def placeOrder(exchange, signal, markets):
 
             exchange.fapiPrivatePostOrder(tpPara)
         except Exception as e:
-            sendAndPrintError(f"跟踪止盈订单失败，请检查日志。{e}")
+            sendAndPrintError(f"{STRATEGY_NAME}: 跟踪止盈订单失败，请检查日志。{e}")
             logger.exception(e)
     
     return orderList
@@ -503,7 +505,7 @@ def closePosition(exchange, openPositions):
             orderId = orderInfo["orderId"]
         except Exception as e:
             logger.exception(e)
-            sendAndPrintError(e)
+            sendAndPrintError(f"{STRATEGY_NAME}: closePosition()平仓出错，请检查。{e}")
         
         for i in range(MAX_TRY):
             orderStatue = exchange.fapiPrivateGetOrder({
@@ -516,7 +518,7 @@ def closePosition(exchange, openPositions):
                 break
             else:
                 if i == MAX_TRY - 1:
-                    sendAndPrintError("closePosition()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
+                    sendAndPrintError(f"{STRATEGY_NAME}: closePosition()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
                 time.sleep(SLEEP_SHORT)
 
     return orderList

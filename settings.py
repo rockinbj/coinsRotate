@@ -16,7 +16,7 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 100
 # 4h级别20根k线
-LEVEL = "4h"
+LEVEL = "5m"
 PERIOD = 6
 # 跟踪止盈开关，跟踪比例
 ENABLE_TP = True
