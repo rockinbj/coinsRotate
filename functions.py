@@ -459,6 +459,27 @@ def placeOrder(exchange, signal, markets):
                 if i == MAX_TRY - 1:
                     sendAndPrintError("placeOrder()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
                 time.sleep(SLEEP_SHORT)
+    
+    # 下跟踪止盈单
+    if ENABLE_TP:
+        try:
+            symbol = signal[1]
+            symbolId = markets.loc[symbol, "id"]
+            quantity = exchange.fetchPositions(symbol)[1]["contracts"]
+            quantity = exchange.amount_to_precision(symbol, quantity)
+            tpPara = {
+                "symbol": symbolId,
+                "side": "SELL",
+                "type": "TRAILING_STOP_MARKET",
+                "quantity": quantity,
+                "callbackRate": TP_PERCENT*100,
+            }
+
+            exchange.fapiPrivatePostOrder(tpPara)
+        except Exception as e:
+            sendAndPrintError(f"跟踪止盈订单失败，请检查日志。{e}")
+            logger.exception(e)
+    
     return orderList
 
 
