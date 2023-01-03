@@ -369,6 +369,7 @@ def getOrderPrice(symbol, price, action, markets):
         orderPrice = price * (1 - SLIPPAGE)
     
     orderPrice = int(orderPrice * (10**precision)) / (10**precision)
+    # orderPrice = exchange.priceToPrecision(symbol, orderPrice)
     logger.debug(f"symbol:{symbol}, slippage:{SLIPPAGE}, price:{price}, pre:{precision}, oP:{orderPrice}")
     
     return orderPrice
@@ -376,7 +377,7 @@ def getOrderPrice(symbol, price, action, markets):
 
 def getOrderSize(symbol, action, price, balance, markets, positions):
     # 如果是卖单则直接返回现有持仓数量
-    if action==0: return positions.loc[markets.loc[symbol, "id"], "positionAmt"]
+    if action==0: return abs(float(positions.loc[markets.loc[symbol, "id"], "positionAmt"]))
 
     # 如果是买单，则根据余额计算数量
     precision = markets.loc[symbol, "precision"]["amount"]
@@ -422,14 +423,19 @@ def placeOrder(exchange, signal, markets):
         bTotal, bBalances, bPositions = getBalances(exchange)
         balance = float(bTotal.iloc[0]["availableBalance"])
         price = float(getTicker(exchange, signal[action]).iloc[0]["last"])
+        price = getOrderPrice(signal[action], price, action, markets)
+        quantity = getOrderSize(signal[action], action, price, balance, markets, bPositions)
+        if action==0 and quantity == 0:
+            logger.info(f"平仓之前持仓已经为0，可能已经被跟踪止损，不平仓。")
+            continue
         
         p = {
             "symbol": markets.loc[signal[action], "id"],
             "side": "BUY" if action ==1 else "SELL",
             # "positionSide": "LONG",
             "type": "LIMIT",
-            "price": getOrderPrice(signal[action], price, action, markets),
-            "quantity": getOrderSize(signal[action], action, price, balance, markets, bPositions),
+            "price": price,
+            "quantity": quantity,
             "newClientOrderId": f"Rock{exchange.milliseconds()}",
             "timeInForce": "GTC",  # 必须参数"有效方式":GTC - Good Till Cancel 成交为止
         }
@@ -440,26 +446,39 @@ def placeOrder(exchange, signal, markets):
         try:
             orderInfo = exchange.fapiPrivatePostOrder(p)
             orderId = orderInfo["orderId"]
-        except Exception as e:
-            logger.exception(e)
-            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()下单出错，请检查。{e}")
 
-        time.sleep(SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
                 
-        for i in range(MAX_TRY):
-            orderStatue = exchange.fapiPrivateGetOrder({
-                "symbol": markets.loc[signal[action], "id"],
-                "orderId": orderId,
-            })
-            if orderStatue["status"] == "FILLED":
-                orderList.append(orderStatue)
-                logger.debug(f"placeOrder()订单成交：{orderStatue}")
-                break
-            else:
-                if i == MAX_TRY - 1:
-                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
-                time.sleep(SLEEP_SHORT)
-    
+            for i in range(MAX_TRY):
+                orderStatue = exchange.fapiPrivateGetOrder({
+                    "symbol": markets.loc[signal[action], "id"],
+                    "orderId": orderId,
+                })
+                if orderStatue["status"] == "FILLED":
+                    orderList.append(orderStatue)
+                    logger.debug(f"placeOrder()订单成交：{orderStatue}")
+                    break
+                else:
+                    if i == MAX_TRY - 1:
+                        sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
+                    time.sleep(SLEEP_SHORT)
+
+        except Exception as e:
+            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()下单出错。程序不退出。请检查: {e}")
+            logger.exception(e)
+
+        # 如果是平仓单（卖单），还需要撤销与之关联的所有挂单，比如跟踪止损单
+        if action==0:
+            try:
+                p = {
+                    "symbol": markets.loc[signal[action], "id"],
+                }
+                logger.debug(f"撤销所有订单: {p}")
+                exchange.fapiPrivateDeleteAllopenorders(p)
+            except Exception as e:
+                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()撤销所有关联挂单失败。程序不退出。请检查: {e}")
+                logger.exception(e)
+
     # 下跟踪止盈单
     if ENABLE_TP:
         try:
@@ -475,11 +494,12 @@ def placeOrder(exchange, signal, markets):
                 "type": "TRAILING_STOP_MARKET",
                 "quantity": quantity,
                 "callbackRate": TP_PERCENT*100,
+                "reduceOnly": True,
             }
 
             exchange.fapiPrivatePostOrder(tpPara)
         except Exception as e:
-            sendAndPrintError(f"{STRATEGY_NAME}: 跟踪止盈订单失败，请检查日志。{e}")
+            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()跟踪止盈下单失败。程序不退出。请检查日志: {e}")
             logger.exception(e)
     
     return orderList

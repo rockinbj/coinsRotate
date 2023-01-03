@@ -20,7 +20,7 @@ LEVEL = "5m"
 PERIOD = 6
 # 跟踪止盈开关，跟踪比例
 ENABLE_TP = True
-TP_PERCENT = 3/100
+TP_PERCENT = 0.5/100
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 0 / 100
 # 杠杆倍数
