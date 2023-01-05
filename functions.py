@@ -75,31 +75,34 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
                 "notional",
                 "percentage",
                 "unrealizedPnl",
-                "entryPrice",
                 "markPrice",
                 "liquidationPrice",
                 "datetime",
-                "side",
                 "leverage",
-                "marginMode",
             ]]
             pos.rename(columns={
                 "notional": "持仓价值(U)",
                 "percentage": "盈亏比例(%)",
                 "unrealizedPnl": "未实现盈亏(U)",
-                "entryPrice": "开仓价格(U)",
                 "markPrice": "标记价格(U)",
                 "liquidationPrice": "爆仓价格(U)",
                 "datetime": "开仓时间",
-                "side": "持仓方向",
                 "leverage": "杠杆倍数",
-                "marginMode": "保证金模式",
             }, inplace=True)
-            d = pos.iloc[0].to_dict()
+            d = pos.to_dict(orient="index")
 
-            msg += f"#### 当前持币 : {pos.iloc[0].name}\n"
-            for name,value in d.items():
-                msg += f"  - {name} : {value}\n"
+            msg += f'#### 当前持币 : {", ".join(list(d.keys()))}'
+            for k,v in d.items():
+                msg += f"""
+#### {k}
+ - 持仓价值(U) : {v["持仓价值(U)"]}
+ - 盈亏比例(%) : {v["盈亏比例(%)"]}
+ - 未实现盈亏(U) : {v["未实现盈亏(U)"]}
+ - 标记价格(U) : {v["标记价格(U)"]}
+ - 爆仓价格(U) : {v["爆仓价格(U)"]}
+ - 开仓时间 : {v["开仓时间"]}
+ - 杠杆倍数 : {v["杠杆倍数"]}
+"""
 
         else:
             msg += "#### 当前空仓\n"
@@ -107,6 +110,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
         msg += f"#### 轮动数量 : {TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n"
         msg += f"#### 策略级别 : {LEVEL}\n"
         msg += f"#### 策略周期 : {PERIOD}\n"
+        msg += f"#### 跟踪止损 : {TP_PERCENT if ENABLE_TP else 'False'}\n"
         msg += f"#### 账户余额 : {bal}U\n"
         msg += f"#### 使用上限 : {MAX_BALANCE*100}%\n"
 
