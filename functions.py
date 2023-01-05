@@ -1,5 +1,6 @@
 import datetime as dt
 import time
+import math
 from functools import reduce
 
 import ccxt
@@ -151,13 +152,14 @@ def nextStartTime(level, ahead_seconds=3):
     return target_time
 
 
-def sleepToClose(level, aheadSeconds):
+def sleepToClose(level, aheadSeconds, test=False):
     nextTime = nextStartTime(level, ahead_seconds=aheadSeconds)
     logger.info(f"等待当前k线收盘，新k线开始时间 {nextTime}")
-    time.sleep(max(0, (nextTime - dt.datetime.now()).seconds))
-    while True:  # 在靠近目标时间时
-        if dt.datetime.now() > nextTime:
-            break
+    if test is False:
+        time.sleep(max(0, (nextTime - dt.datetime.now()).seconds))
+        while True:  # 在靠近目标时间时
+            if dt.datetime.now() > nextTime:
+                break
     logger.info(f"新k线开盘，开始计算信号！")
 
 
@@ -341,6 +343,54 @@ def getSignal(klines, openPosition, factor, para):
     return sig
 
 
+def getSignal2(klines, openPosition, factor, para):
+    
+    # 每个币种计算因子列
+    for symbol,df in klines.items():
+        logger.debug(symbol)
+        # 计算因子列
+        df = getattr(signals, factor)(df, para)
+        df["symbol"] = symbol
+
+    # 汇总每个币种的df，生成总的dfAll
+    dfs = list(klines.values())
+    dfAll = reduce(lambda df1,df2: pd.concat([df1,df2], ignore_index=True), dfs)
+    # 根据时间和因子排序，最新k线的因子排序出现在最后
+    g = dfAll.groupby("candle_begin_time")
+    # 有些币缺少k线，会导致最后一组k线的数量变少，因此用最后一组k线的数量作为选币池的总个数，过滤掉最后一组中没有出现的币种
+    coins_num = g.size()[-1]
+    logger.debug(f"币池总数{len(klines)}, 最新k线币总数{coins_num}")
+    dfAll["rank"] = g["factor"].rank(ascending=False, method="first")
+    dfAll.sort_values(by=["candle_begin_time", "rank"], inplace=True)
+    # 最新k线的排序结果
+    dfNew = dfAll.tail(coins_num)
+    logger.info(f'本周期因子排序结果:\n{dfNew[["candle_begin_time", "symbol", "factor", "rank"]]}')
+
+    # 根据因子排序选前几名的币，也可以选后几名的币
+    longCoins = dfNew.head(min(SELECTION_NUM, int(len(dfNew)/2)))
+    # shortCoins = dfNew.tail(min(SELECTION_NUM, int(len(dfNew)/2)))
+    # 还要满足下限参数的要求
+    longCoins = longCoins.loc[dfNew["factor"]>MIN_CHANGE]
+    # 最后得出一个symbol list
+    longCoins = longCoins["symbol"].values.tolist()
+    
+    # 根据现有持仓，生成交易信号
+    has = openPosition.index.tolist()
+    logger.debug(f"has: {has}")
+    new = longCoins
+    logger.debug(f"new: {new}")
+
+    if set(has) != set(new):
+        sig = {
+            0: [i for i in has if i not in new],
+            1: list(set(new) - set(has)),
+        }
+    else:
+        sig = None
+
+    return sig
+
+
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
         before_sleep=before_sleep_log(logger, logging.ERROR))
 def setMarginType(exchange, symbolId, _type=1):
@@ -382,11 +432,12 @@ def getOrderSize(symbol, action, price, balance, markets, positions):
     # 如果是买单，则根据余额计算数量
     precision = markets.loc[symbol, "precision"]["amount"]
     minLimit = markets.loc[symbol, "limits"]["amount"]["min"]
-    balance = balance * MAX_BALANCE
+    maxLimit = markets.loc[symbol, "limits"]["market"]["max"]
 
     size = max(balance*LEVERAGE/price, minLimit)
+    size = min(size, maxLimit)
     size = int(size * (10**precision)) / (10**precision)
-    logger.debug(f"symbol:{symbol}, maxBalance:{MAX_BALANCE}, price:{price}, pre:{precision}, size:{size}, min:{round(0.1**precision, precision)}, minLimit:{minLimit}")
+    logger.debug(f"symbol:{symbol}, maxBalance:{MAX_BALANCE}, price:{price}, pre:{precision}, size:{size}, min:{round(0.1**precision, precision)}, minLimit:{minLimit}, maxLimit:{maxLimit}")
     if precision==0:
         size = int(size)
         return max(size, minLimit)
@@ -487,7 +538,7 @@ def placeOrder(exchange, signal, markets):
             r = exchange.fetchPositions([symbol])
             quantity = r[0]["contracts"]  # one-way mode单向持仓模式时
             # quantity = r[1]["contracts"]  # hedge mode双向持仓模式时
-            quantity = exchange.amount_to_precision(symbol, quantity)
+
             tpPara = {
                 "symbol": symbolId,
                 "side": "SELL",
@@ -496,11 +547,156 @@ def placeOrder(exchange, signal, markets):
                 "callbackRate": TP_PERCENT*100,
                 "reduceOnly": True,
             }
-
+            logger.debug(f"{symbol}跟踪止损单参数:{tpPara}")
             exchange.fapiPrivatePostOrder(tpPara)
         except Exception as e:
-            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder()跟踪止盈下单失败。程序不退出。请检查日志: {e}")
+            sendAndPrintError(f"{STRATEGY_NAME}: 重大风险!placeOrder({symbol})跟踪止盈下单失败。程序不退出。请检查日志: {e}")
             logger.exception(e)
+    
+    return orderList
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
+        before_sleep=before_sleep_log(logger, logging.ERROR))                  
+def placeOrder2(exchange, signal, markets):
+    orderList = []
+    
+    # 执行卖出
+    if signal[0]:
+        pos = getOpenPosition(exchange)
+        for s in signal[0]:
+            if s not in pos.index:
+                logger.info(f"placeOrder({s})平仓之前已经没有持仓,可能已经被跟踪止损,本次不再平仓。")
+                continue
+            price = float(getTicker(exchange, s).iloc[0]["last"])
+            price = getOrderPrice(symbol=s, price=price, action=0, markets=markets)
+            quantity = abs(float(pos.loc[s, "contracts"]))
+            
+            p = {
+                "symbol": markets.loc[s, "id"],
+                "side": "SELL",
+                "type": "LIMIT",
+                "price": price,
+                "quantity": quantity,
+                "newClientOrderId": f"Rock{exchange.milliseconds()}",
+                "timeInForce": "GTC",  # 必须参数"有效方式":GTC - Good Till Cancel 成交为止
+                "reduceOnly": True,
+            }
+
+            logger.debug(f"placeOrder({s})平仓单参数: {p}")
+            try:
+                orderInfo = exchange.fapiPrivatePostOrder(p)
+                orderId = orderInfo["orderId"]
+
+                time.sleep(SLEEP_SHORT)
+                    
+                for i in range(MAX_TRY):
+                    orderStatue = exchange.fapiPrivateGetOrder({
+                        "symbol": markets.loc[s, "id"],
+                        "orderId": orderId,
+                    })
+                    if orderStatue["status"] == "FILLED":
+                        orderList.append([orderStatue["symbol"], orderStatue["side"], orderStatue["status"]])
+                        logger.info(f"placeOrder({s})平仓单成交：{orderStatue}")
+                        break
+                    else:
+                        if i == MAX_TRY - 1:
+                            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})平仓单一直未成交,程序不退出,请尽快检查。")
+                        time.sleep(SLEEP_SHORT)
+                
+                # 平仓后撤销跟踪止盈订单，避免影响后续再开仓的同币订单
+                try:
+                    p = {
+                        "symbol": markets.loc[s, "id"],
+                    }
+                    logger.info(f"placeOrder({s})平仓后撤销所有关联挂单: {p}")
+                    exchange.fapiPrivateDeleteAllopenorders(p)
+                except Exception as e:
+                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})撤销所有关联挂单失败。程序不退出。请检查: {e}")
+                    logger.exception(e)
+
+            except Exception as e:
+                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})平仓单下单出错。程序不退出。请检查: {e}")
+                logger.exception(e)
+
+
+    # 执行买入
+    if signal[1]:
+        bTotal, bBalances, bPositions = getBalances(exchange)
+        balance = float(bTotal.iloc[0]["availableBalance"]) * MAX_BALANCE
+        for s in signal[1]:
+            try:
+                setMarginType(exchange, markets.loc[s, "id"], _type=1)
+                exchange.setLeverage(LEVERAGE, s)
+            except Exception as e:
+                pass
+
+            balanceForMe = balance / len(signal[1])
+            logger.debug(f"{s}本次使用余额{balanceForMe}")
+            price = float(getTicker(exchange, s).iloc[0]["last"])
+            price = getOrderPrice(symbol=s, price=price, action=1, markets=markets)
+            quantity = getOrderSize(symbol=s, action=1, price=price, balance=balanceForMe, markets=markets, positions=bPositions)
+            p = {
+                "symbol": markets.loc[s, "id"],
+                "side": "BUY",
+                "type": "LIMIT",
+                "price": price,
+                "quantity": quantity,
+                "newClientOrderId": f"Rock{exchange.milliseconds()}",
+                "timeInForce": "GTC",  # 必须参数"有效方式":GTC - Good Till Cancel 成交为止
+            }
+
+            logger.debug(f"placeOrder({s})开仓单参数: {p}")
+            try:
+                orderInfo = exchange.fapiPrivatePostOrder(p)
+                orderId = orderInfo["orderId"]
+
+                time.sleep(SLEEP_SHORT)
+                    
+                for i in range(MAX_TRY):
+                    orderStatue = exchange.fapiPrivateGetOrder({
+                        "symbol": markets.loc[s, "id"],
+                        "orderId": orderId,
+                    })
+                    if orderStatue["status"] == "FILLED":
+                        orderList.append([orderStatue["symbol"], orderStatue["side"], orderStatue["status"]])
+                        logger.info(f"placeOrder({s})开仓单成交：{orderStatue}")
+                        break
+                    else:
+                        if i == MAX_TRY - 1:
+                            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})开仓单一直未成交,程序不退出,请尽快检查。")
+                        time.sleep(SLEEP_SHORT)
+
+            except Exception as e:
+                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})开仓单下单出错。程序不退出。请检查: {e}")
+                logger.exception(e)
+
+            # 开仓成功后，下跟踪止盈单
+            if ENABLE_TP:
+                try:
+                    symbolId = markets.loc[s, "id"]
+                    r = exchange.fetchPositions([s])
+                    quantityTotal = r[0]["contracts"]  # one-way mode单向持仓模式时
+                    # quantityTotal = r[1]["contracts"]  # hedge mode双向持仓模式时
+                    
+                    # 跟踪止损单是市价单，市价单的最大下单限制比较小，需要考虑拆分下单
+                    maxLimit = markets.loc[s, "limits"]["market"]["max"]
+                    for i in range(math.ceil(quantityTotal/maxLimit)):
+                        tpPara = {
+                            "symbol": symbolId,
+                            "side": "SELL",
+                            "type": "TRAILING_STOP_MARKET",
+                            "quantity": min(quantityTotal, maxLimit),
+                            "callbackRate": TP_PERCENT*100,
+                            "reduceOnly": True,
+                        }
+                        logger.debug(f"{s}跟踪止损订单参数:{tpPara}")
+                        exchange.fapiPrivatePostOrder(tpPara)
+                except Exception as e:
+                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})跟踪止盈下单失败。程序不退出。请检查日志: {e}")
+                    logger.exception(e)
+                
+
     
     return orderList
 
@@ -549,9 +745,7 @@ def closePosition(exchange, openPositions):
 if __name__ == "__main__":
     ## for test only
     ex = ccxt.binance(EXCHANGE_CONFIG)
-    markets = getMarkets(ex)
-    symbol="BTC/USDT"
-    # t1, t2, t3 = getBalances(ex)
-    # print(t1.iloc[0]['availableBalance'])
-    while True:
-        sendReport(ex, REPORT_INTERVAL)
+    a,b,c = getBalances(ex)
+    print(a)
+    print(b)
+    print(c)

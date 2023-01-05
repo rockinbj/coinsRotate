@@ -1,5 +1,6 @@
 # 策略命名
-STRATEGY_NAME = "鹤"
+STRATEGY_NAME = "鹤TEST"
+IS_TEST = False
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = []
@@ -10,17 +11,19 @@ SYMBOLS_BLACK = []
 FACTOR = "signalMomentum"
 # FACTOR = "signalTest"
 
-# 选币参数
-# 只选取USDT交易对的成交量top3
+# 选币范围
+# 只选取USDT交易对的成交量topN
 RULE = "/USDT"
 TYPE = "quoteVolume"
-TOP = 100
+TOP = 200
 # 4h级别20根k线
-LEVEL = "5m"
-PERIOD = 6
+LEVEL = "30m"
+PERIOD = 12
+# 选币个数
+SELECTION_NUM = 3
 # 跟踪止盈开关，跟踪比例
 ENABLE_TP = True
-TP_PERCENT = 0.5/100
+TP_PERCENT = 1/100
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 0 / 100
 # 杠杆倍数
@@ -28,7 +31,7 @@ LEVERAGE = 2
 # 交易安全滑点
 SLIPPAGE = 1 / 100
 # 余额使用上限
-MAX_BALANCE = 90 / 100
+MAX_BALANCE = 97 / 100
 
 
 # 本轮开始之前的预留秒数，小于预留秒数则顺延至下轮

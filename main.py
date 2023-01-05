@@ -41,13 +41,10 @@ def main():
         
         # 提取TOP币种List,合并黑白名单
         symbols = getTopN(tickers, rule=RULE, _type=TYPE, n=TOP)
-        # symbols += SYMBOLS_WHITE
-        # [symbols.remove(s) for s in SYMBOLS_BLACK if s in symbols]
-        # symbols = list(set(symbols))
         symbols = (set(symbols) | set(SYMBOLS_WHITE)) - set(SYMBOLS_BLACK)
         symbols = list(symbols)
 
-        logger.info(f"获取到{TYPE} TOP{TOP}币种,\n白名单：{SYMBOLS_WHITE}\n黑名单：{SYMBOLS_BLACK}\n合并黑白名单后,共{len(symbols)}种:\n{symbols}")
+        logger.info(f"获取到{TYPE} TOP{TOP}币种,\n白名单：{SYMBOLS_WHITE}\n黑名单：{SYMBOLS_BLACK}\n过滤后,共{len(symbols)}种:\n{symbols}")
         time.sleep(SLEEP_LONG)
         
         # 获取当前持仓情况
@@ -57,13 +54,15 @@ def main():
         time.sleep(SLEEP_LONG)
 
         # 获取各币种的历史k线,dict:{symbols: kline_df}
+        timeStart = time.time()
         kHistory = getKlines(exchangeId=EXCHANGE, symbols=symbols, level=LEVEL, amount=PERIOD)
         # logger.debug(f"kHistory:\n{kHistory}")
         logger.info(f"获取到所有TOP币种历史k线,共{sum(map(len, kHistory.values()))}根")
+        logger.debug(f"获取历史k线,用时{int(time.time()-timeStart)}秒")
         time.sleep(SLEEP_LONG)
 
         # 等待当前k线收盘
-        sleepToClose(level=LEVEL, aheadSeconds=AHEAD_SEC)
+        sleepToClose(level=LEVEL, aheadSeconds=AHEAD_SEC, test=IS_TEST)
 
         # 并行获取轮动池的最新k线
         timeStart = time.time()
@@ -74,25 +73,30 @@ def main():
         kNew = {list(i.keys())[0]:list(i.values())[0] for i in kNew}
         # logger.debug(f"kNew:\n{kNew}")
         kAll = combineK(kHistory, kNew)
-        logger.info(f"并行取到所有TOP{TOP}币种最新k线,用时{int(time.time()-timeStart)}秒")
+        logger.debug(f"并行取到所有TOP{TOP}币种最新k线,用时{int(time.time()-timeStart)}秒")
         # logger.debug(f"kAll:\n{kAll}")
         
         # 计算信号
-        sig = getSignal(kAll, openPosition=openPosition, factor=FACTOR, para=[PERIOD])
+        # 计算信号前再次更新持仓状态，避免中间被跟踪止损平掉仓位但是状态没更新为空，丢失信号的情况
+        openPosition = getOpenPosition(ex)
+        sig = getSignal2(kAll, openPosition=openPosition, factor=FACTOR, para=[PERIOD])
         logger.info(f"本周期计算信号完成：{sig}")
 
         # 根据信号下单
         if sig:
             logger.info(f"本周期出现交易信号,开始下单！")
-            orderList = placeOrder(ex, sig, markets)
-            sendAndPrintInfo(f"{STRATEGY_NAME}: 本周期出现交易信号:\n{sig}\n\n订单执行成功：\n{orderList}")
-        elif sig==0:
-            logger.info(f"所有币种因子均小于涨幅下限{MIN_CHANGE*100}%,本周期空仓。")
-            orderList = closePosition(ex, openPosition)
-            if orderList: sendAndPrintInfo(f"{STRATEGY_NAME}: 所有币种涨幅小于0,本周期空仓,清仓执行成功：\n{orderList}")
+            orderList = placeOrder2(ex, sig, markets)
+            orderListStr = "\n".join(str(i) for i in orderList)
+            sendAndPrintInfo(f"{STRATEGY_NAME}: 本周期出现交易信号:\n{sig}\n\n订单执行成功：\n{orderListStr}")
+        # else:
+        #     logger.info(f"所有币种因子均小于涨幅下限{MIN_CHANGE*100}%,本周期空仓。")
+        #     orderList = closePosition(ex, openPosition)
+        #     if orderList: sendAndPrintInfo(f"{STRATEGY_NAME}: 所有币种涨幅小于0,本周期空仓,清仓执行成功：\n{orderList}")
 
 
         # 下单后更新持仓状态,发送报告
+        if IS_TEST:
+            exit()
         time.sleep(SLEEP_LONG)
 
 
