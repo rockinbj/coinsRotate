@@ -62,7 +62,7 @@ def main():
         time.sleep(SLEEP_LONG)
 
         # 等待当前k线收盘
-        sleepToClose(level=LEVEL, aheadSeconds=AHEAD_SEC, test=IS_TEST)
+        sleepToClose(level=LEVEL, aheadSeconds=AHEAD_SEC, test=IS_TEST, offsetSec=OFFSET_SEC)
 
         # 并行获取轮动池的最新k线
         timeStart = time.time()

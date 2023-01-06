@@ -151,7 +151,7 @@ def secondsToNext(exchange, level):
     return seconds
 
 
-def nextStartTime(level, ahead_seconds=3):
+def nextStartTime(level, ahead_seconds=3, offsetSec=0):
     # ahead_seconds为预留秒数，
     # 当离开始时间太近，本轮可能来不及下单，因此当离开始时间的秒数小于预留秒数时，
     # 就直接顺延至下一轮开始
@@ -179,18 +179,19 @@ def nextStartTime(level, ahead_seconds=3):
             # 当符合运行周期，并且目标时间有足够大的余地，默认为60s
             break
 
+    target_time -= dt.timedelta(seconds=offsetSec)
     return target_time
 
 
-def sleepToClose(level, aheadSeconds, test=False):
-    nextTime = nextStartTime(level, ahead_seconds=aheadSeconds)
-    logger.info(f"等待当前k线收盘，新k线开始时间 {nextTime}")
+def sleepToClose(level, aheadSeconds, test=False, offsetSec=0):
+    nextTime = nextStartTime(level, ahead_seconds=aheadSeconds, offsetSec=offsetSec)
+    logger.info(f"等待下一轮开始,开始时间: {nextTime}")
     if test is False:
         time.sleep(max(0, (nextTime - dt.datetime.now()).seconds))
         while True:  # 在靠近目标时间时
             if dt.datetime.now() > nextTime:
                 break
-    logger.info(f"新k线开盘，开始计算信号！")
+    logger.info(f"时间到,新一轮计算开始！")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,

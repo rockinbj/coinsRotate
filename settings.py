@@ -4,7 +4,7 @@ IS_TEST = False
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = []
-SYMBOLS_BLACK = []
+SYMBOLS_BLACK = ["BTCDOM/USDT"]
 
 
 # 选币算法
@@ -36,7 +36,8 @@ MAX_BALANCE = 97 / 100
 
 # 本轮开始之前的预留秒数，小于预留秒数则顺延至下轮
 AHEAD_SEC = 3
-
+# 向前偏移秒数，为了避免在同一时间下单造成踩踏
+OFFSET_SEC = 0
 
 # 获取最新k线的数量
 NEW_KLINE_NUM = 5
