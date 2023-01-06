@@ -26,7 +26,7 @@ ENABLE_TP = True
 TP_PERCENT = 3/100
 # 止损开关，开仓价的向下比例
 ENABLE_SL = True
-SL_PERCENT = 1/100
+SL_PERCENT = 2/100
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 0 / 100
 # 杠杆倍数
