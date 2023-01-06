@@ -21,7 +21,27 @@ pd.set_option("display.unicode.east_asian_width", True)
 logger = logging.getLogger("app.func")
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(SLEEP_SHORT), reraise=True,
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
+        before_sleep=before_sleep_log(logger, logging.ERROR),
+        )
+def callAlarm(strategyName=STRATEGY_NAME, content="存在严重风险项，请立即检查"):
+    url = "http://api.aiops.com/alert/api/event"
+    apiKey = "66e6aeab4218431f8afe7e76ac96c38e"
+    eventId = str(int(time.time()))
+    stragetyName = strategyName
+    content = content
+    para = f"?app={apiKey}&eventType=trigger&eventId={eventId}&priority=3&host={stragetyName}&alarmContent={content}"
+
+    try:
+        r = requests.post(url+para)
+        if r.json()["result"] != "success":
+            sendAndPrintError(f"电话告警触发失败，可能有严重风险，请立即检查！{r.text}")
+    except Exception as e:
+        logger.error(f"电话告警触发失败，可能有严重风险，请立即检查！{e}")
+        logger.exception(e)
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(SLEEP_SHORT), reraise=True,
         before_sleep=before_sleep_log(logger, logging.ERROR),
         )
 def sendMixin(msg, _type="PLAIN_TEXT"):
@@ -49,6 +69,12 @@ def sendAndPrintError(msg):
     sendMixin(msg)
 
 
+def sendAndCritical(msg):
+    logger.critical(msg)
+    callAlarm(strategyName=STRATEGY_NAME, content=msg)
+    sendMixin(msg)
+
+
 def sendAndRaise(msg):
     logger.error(msg)
     sendMixin(msg)
@@ -61,7 +87,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
     nowMinute = dt.datetime.now().minute
     nowSecond = dt.datetime.now().second
 
-    if (nowMinute%interval==0) and (nowSecond==47):
+    if (nowMinute%interval==0) and (nowSecond==59):
         logger.debug("开始发送报告")
 
         pos = getOpenPosition(exchange)
@@ -605,7 +631,7 @@ def placeOrder2(exchange, signal, markets):
                         break
                     else:
                         if i == MAX_TRY - 1:
-                            sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})平仓单一直未成交,程序不退出,请尽快检查。")
+                            sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})平仓单一直未成交,程序不退出,请尽快检查。")
                         time.sleep(SLEEP_SHORT)
                 
                 # 平仓后撤销跟踪止盈订单，避免影响后续再开仓的同币订单
@@ -616,11 +642,11 @@ def placeOrder2(exchange, signal, markets):
                     logger.info(f"placeOrder({s})平仓后撤销所有关联挂单: {p}")
                     exchange.fapiPrivateDeleteAllopenorders(p)
                 except Exception as e:
-                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})撤销所有关联挂单失败。程序不退出。请检查: {e}")
+                    sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})撤销所有关联挂单失败。程序不退出。请检查: {e}")
                     logger.exception(e)
 
             except Exception as e:
-                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})平仓单下单出错。程序不退出。请检查: {e}")
+                sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})平仓单下单出错。程序不退出。请检查: {e}")
                 logger.exception(e)
 
 
@@ -697,7 +723,7 @@ def placeOrder2(exchange, signal, markets):
                         logger.debug(f"{s}跟踪止损订单参数:{tpPara}")
                         exchange.fapiPrivatePostOrder(tpPara)
                 except Exception as e:
-                    sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})跟踪止盈下单失败。程序不退出。请检查日志: {e}")
+                    sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})跟踪止盈下单失败。程序不退出。请检查日志: {e}")
                     logger.exception(e)
                 
 
@@ -725,7 +751,7 @@ def closePosition(exchange, openPositions):
             orderId = orderInfo["orderId"]
         except Exception as e:
             logger.exception(e)
-            sendAndPrintError(f"{STRATEGY_NAME}: closePosition()平仓出错，请检查。{e}")
+            sendAndCritical(f"{STRATEGY_NAME}: closePosition()平仓出错，请检查。{e}")
         
         for i in range(MAX_TRY):
             orderStatue = exchange.fapiPrivateGetOrder({
@@ -738,7 +764,7 @@ def closePosition(exchange, openPositions):
                 break
             else:
                 if i == MAX_TRY - 1:
-                    sendAndPrintError(f"{STRATEGY_NAME}: closePosition()订单状态一直未成交FILLED,程序不退出,请尽快检查。")
+                    sendAndCritical(f"{STRATEGY_NAME}: closePosition()平仓一直未成交FILLED,程序不退出,请尽快检查。")
                 time.sleep(SLEEP_SHORT)
 
     return orderList
