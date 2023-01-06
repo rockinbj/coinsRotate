@@ -1,10 +1,10 @@
 # 策略命名
 STRATEGY_NAME = "鹤TEST"
-IS_TEST = False
+IS_TEST = True
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = []
-SYMBOLS_BLACK = ["BTCDOM/USDT"]
+SYMBOLS_BLACK = ["BTCDOM/USDT", "DEFI/USDT", "BLUEBIRD/USDT"]
 
 
 # 选币算法
@@ -17,13 +17,16 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 200
 # 4h级别20根k线
-LEVEL = "30m"
-PERIOD = 12
+LEVEL = "1h"
+PERIOD = 6
 # 选币个数
 SELECTION_NUM = 3
 # 跟踪止盈开关，跟踪比例
 ENABLE_TP = True
-TP_PERCENT = 1/100
+TP_PERCENT = 3/100
+# 止损开关，开仓价的向下比例
+ENABLE_SL = True
+SL_PERCENT = 1/100
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 0 / 100
 # 杠杆倍数

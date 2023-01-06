@@ -702,6 +702,35 @@ def placeOrder2(exchange, signal, markets):
                 sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})开仓单下单出错。程序不退出。请检查: {e}")
                 logger.exception(e)
 
+            # 开仓成功后，下固定止损单
+            if ENABLE_SL:
+                try:
+                    symbolId = markets.loc[s, "id"]
+                    r = exchange.fetchPositions([s])
+                    quantityTotal = r[0]["contracts"]  # one-way mode单向持仓模式时
+                    # quantityTotal = r[1]["contracts"]  # hedge mode双向持仓模式时
+                    price = r[0]["entryPrice"] * (1-SL_PERCENT)
+                    price = exchange.priceToPrecision(s, price)
+                    
+                    # 跟踪止损单是市价单，市价单的最大下单限制比较小，需要考虑拆分下单
+                    maxLimit = markets.loc[s, "limits"]["market"]["max"]
+                    for i in range(math.ceil(quantityTotal/maxLimit)):
+                        slPara = {
+                            "symbol": symbolId,
+                            "side": "SELL",
+                            "type": "STOP_MARKET",
+                            "stopPrice": price,
+                            "quantity": min(quantityTotal, maxLimit),
+                            # "closePosition": True,
+                            # "timeInForce": "GTC",
+                        }
+                        logger.debug(f"{s}固定止损订单参数:{slPara}")
+                        exchange.fapiPrivatePostOrder(slPara)
+                except Exception as e:
+                    sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})固定止损下单失败。程序不退出。请检查日志: {e}")
+                    logger.exception(e)
+
+
             # 开仓成功后，下跟踪止盈单
             if ENABLE_TP:
                 try:
@@ -721,7 +750,7 @@ def placeOrder2(exchange, signal, markets):
                             "callbackRate": TP_PERCENT*100,
                             "reduceOnly": True,
                         }
-                        logger.debug(f"{s}跟踪止损订单参数:{tpPara}")
+                        logger.debug(f"{s}跟踪止盈订单参数:{tpPara}")
                         exchange.fapiPrivatePostOrder(tpPara)
                 except Exception as e:
                     sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})跟踪止盈下单失败。程序不退出。请检查日志: {e}")
