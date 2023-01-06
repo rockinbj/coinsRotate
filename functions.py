@@ -136,7 +136,8 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
         msg += f"#### 轮动数量 : {TOP+len(SYMBOLS_WHITE)-len(SYMBOLS_BLACK)}\n"
         msg += f"#### 策略级别 : {LEVEL}\n"
         msg += f"#### 策略周期 : {PERIOD}\n"
-        msg += f"#### 跟踪止损 : {TP_PERCENT if ENABLE_TP else 'False'}\n"
+        msg += f"#### 跟踪止盈 : {TP_PERCENT if ENABLE_TP else 'False'}\n"
+        msg += f"#### 固定止损 : {SL_PERCENT if ENABLE_SL else 'False'}\n"
         msg += f"#### 账户余额 : {bal}U\n"
         msg += f"#### 使用上限 : {MAX_BALANCE*100}%\n"
 
