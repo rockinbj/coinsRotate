@@ -101,6 +101,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
                 "notional",
                 "percentage",
                 "unrealizedPnl",
+                "entryPrice",
                 "markPrice",
                 "liquidationPrice",
                 "datetime",
@@ -110,6 +111,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
                 "notional": "持仓价值(U)",
                 "percentage": "盈亏比例(%)",
                 "unrealizedPnl": "未实现盈亏(U)",
+                "entryPrice": "开仓价格(U)",
                 "markPrice": "标记价格(U)",
                 "liquidationPrice": "爆仓价格(U)",
                 "datetime": "开仓时间",
@@ -125,6 +127,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
  - 持仓价值(U) : {v["持仓价值(U)"]}
  - 盈亏比例(%) : {v["盈亏比例(%)"]}
  - 未实现盈亏(U) : {v["未实现盈亏(U)"]}
+ - 开仓价格(U) : {v["开仓价格(U)"]}
  - 标记价格(U) : {v["标记价格(U)"]}
  - 爆仓价格(U) : {v["爆仓价格(U)"]}
  - 开仓时间 : {v["开仓时间"]}
