@@ -597,6 +597,7 @@ def placeOrder2(exchange, signal, markets):
     if signal[0]:
         pos = getOpenPosition(exchange)
         for s in signal[0]:
+            symbolId = markets.loc[s, "id"]
             if s not in pos.index:
                 logger.info(f"placeOrder({s})平仓之前已经没有持仓,可能已经被跟踪止损,本次不再平仓。")
                 continue
@@ -605,7 +606,7 @@ def placeOrder2(exchange, signal, markets):
             quantity = abs(float(pos.loc[s, "contracts"]))
             
             p = {
-                "symbol": markets.loc[s, "id"],
+                "symbol": symbolId,
                 "side": "SELL",
                 "type": "LIMIT",
                 "price": price,
@@ -624,7 +625,7 @@ def placeOrder2(exchange, signal, markets):
                     
                 for i in range(MAX_TRY):
                     orderStatue = exchange.fapiPrivateGetOrder({
-                        "symbol": markets.loc[s, "id"],
+                        "symbol": symbolId,
                         "orderId": orderId,
                     })
                     if orderStatue["status"] == "FILLED":
@@ -636,15 +637,12 @@ def placeOrder2(exchange, signal, markets):
                             sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})平仓单一直未成交,程序不退出,请尽快检查。")
                         time.sleep(SLEEP_SHORT)
                 
-                # 平仓后撤销跟踪止盈订单，避免影响后续再开仓的同币订单
+                # 平仓后撤销关联订单，避免影响后续再开仓的同币订单
                 try:
-                    p = {
-                        "symbol": markets.loc[s, "id"],
-                    }
                     logger.info(f"placeOrder({s})平仓后撤销所有关联挂单: {p}")
-                    exchange.fapiPrivateDeleteAllopenorders(p)
+                    exchange.fapiPrivateDeleteAllopenorders({"symbol": symbolId})
                 except Exception as e:
-                    sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})撤销所有关联挂单失败。程序不退出。请检查: {e}")
+                    sendAndCritical(f"{STRATEGY_NAME}: placeOrder({s})平仓后撤销关联挂单失败。程序不退出。请检查: {e}")
                     logger.exception(e)
 
             except Exception as e:
@@ -657,11 +655,18 @@ def placeOrder2(exchange, signal, markets):
         bTotal, bBalances, bPositions = getBalances(exchange)
         balance = float(bTotal.iloc[0]["availableBalance"]) * MAX_BALANCE
         for s in signal[1]:
+            symbolId = markets.loc[s, "id"]
             try:
-                setMarginType(exchange, markets.loc[s, "id"], _type=1)
+                # 先设置全仓和杠杆
+                pos_type = 1
+                setMarginType(exchange, symbolId, _type=pos_type)
                 exchange.setLeverage(LEVERAGE, s)
+                # 为了防止有残留止盈止损挂单，先清除所有该symbol的已有挂单
+                exchange.fapiPrivateDeleteAllopenorders({"symbol": symbolId})
+                logger.info(f'设置模式{"cross" if pos_type==1 else "isolated"}、设置杠杆{LEVERAGE}x、清理{symbolId}挂单完毕。')
             except Exception as e:
-                pass
+                logger.error(f"设置仓位模式、设置杠杆、清理挂单出现错误，程序不退出，请尽快检查{e}")
+                logger.exception(e)
 
             balanceForMe = balance / len(signal[1])
             logger.debug(f"{s}本次使用余额{balanceForMe}")
@@ -669,7 +674,7 @@ def placeOrder2(exchange, signal, markets):
             price = getOrderPrice(symbol=s, price=price, action=1, markets=markets)
             quantity = getOrderSize(symbol=s, action=1, price=price, balance=balanceForMe, markets=markets, positions=bPositions)
             p = {
-                "symbol": markets.loc[s, "id"],
+                "symbol": symbolId,
                 "side": "BUY",
                 "type": "LIMIT",
                 "price": price,
@@ -687,7 +692,7 @@ def placeOrder2(exchange, signal, markets):
                     
                 for i in range(MAX_TRY):
                     orderStatue = exchange.fapiPrivateGetOrder({
-                        "symbol": markets.loc[s, "id"],
+                        "symbol": symbolId,
                         "orderId": orderId,
                     })
                     if orderStatue["status"] == "FILLED":
@@ -706,7 +711,6 @@ def placeOrder2(exchange, signal, markets):
             # 开仓成功后，下固定止损单
             if ENABLE_SL:
                 try:
-                    symbolId = markets.loc[s, "id"]
                     r = exchange.fetchPositions([s])
                     quantityTotal = r[0]["contracts"]  # one-way mode单向持仓模式时
                     # quantityTotal = r[1]["contracts"]  # hedge mode双向持仓模式时
@@ -721,8 +725,8 @@ def placeOrder2(exchange, signal, markets):
                             "side": "SELL",
                             "type": "STOP_MARKET",
                             "stopPrice": price,
-                            "quantity": min(quantityTotal, maxLimit),
-                            # "closePosition": True,
+                            # "quantity": min(quantityTotal, maxLimit),
+                            "closePosition": True,
                             # "timeInForce": "GTC",
                         }
                         logger.debug(f"{s}固定止损订单参数:{slPara}")
@@ -735,7 +739,6 @@ def placeOrder2(exchange, signal, markets):
             # 开仓成功后，下跟踪止盈单
             if ENABLE_TP:
                 try:
-                    symbolId = markets.loc[s, "id"]
                     r = exchange.fetchPositions([s])
                     quantityTotal = r[0]["contracts"]  # one-way mode单向持仓模式时
                     # quantityTotal = r[1]["contracts"]  # hedge mode双向持仓模式时
