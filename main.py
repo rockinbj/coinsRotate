@@ -79,13 +79,13 @@ def main():
         # 计算信号
         # 计算信号前再次更新持仓状态，避免中间被跟踪止损平掉仓位但是状态没更新为空，丢失信号的情况
         openPosition = getOpenPosition(ex)
-        sig = getSignal2(kAll, openPosition=openPosition, factor=FACTOR, para=[PERIOD])
+        sig = getSignal(kAll, openPosition=openPosition, factor=FACTOR, para=[PERIOD])
         logger.info(f"本周期计算信号完成：{sig}")
 
         # 根据信号下单
         if sig:
             logger.info(f"本周期出现交易信号,开始下单！")
-            orderList = placeOrder2(ex, sig, markets)
+            orderList = placeOrder(ex, sig, markets)
             orderListStr = "\n".join(str(i) for i in orderList)
             sendAndPrintInfo(f"{STRATEGY_NAME}: 本周期出现交易信号:\n{sig}\n\n订单执行成功：\n{orderListStr}")
         # else:
