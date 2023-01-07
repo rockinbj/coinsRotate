@@ -115,6 +115,7 @@ def sendReport(exchangeId, interval=REPORT_INTERVAL):
                 "datetime": "开仓时间",
                 "leverage": "杠杆倍数",
             }, inplace=True)
+            pos.sort_values(by="盈亏比例(%)", ascending=False, inplace=True)
             d = pos.to_dict(orient="index")
 
             msg += f'#### 当前持币 : {", ".join(list(d.keys()))}'
