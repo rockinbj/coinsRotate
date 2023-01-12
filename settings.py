@@ -1,5 +1,5 @@
 # 策略命名
-STRATEGY_NAME = "鹤TEST"
+STRATEGY_NAME = "鹤"
 IS_TEST = True
 
 # 轮动池黑白名单,格式"BTC/USDT"
@@ -17,24 +17,25 @@ RULE = "/USDT"
 TYPE = "quoteVolume"
 TOP = 200
 # 4h级别20根k线
-LEVEL = "1h"
-PERIOD = 6
+LEVEL = "4h"
+PERIOD = 3
 # 选币个数
-SELECTION_NUM = 3
-# 跟踪止盈开关，跟踪比例
+SELECTION_NUM = 2
+# 跟踪止盈开关，跟踪比例，注意TP和SL的比例都是价格比例，
+# 如果价格波动1%，2倍杠杆，那么ROE的波动就是2%
 ENABLE_TP = True
 TP_PERCENT = 3/100
 # 止损开关，开仓价的向下比例
 ENABLE_SL = True
-SL_PERCENT = 2/100
+SL_PERCENT = 3/100
 # 涨幅下限，小于此空仓
 MIN_CHANGE = 0 / 100
 # 杠杆倍数
-LEVERAGE = 2
+LEVERAGE = 1
 # 交易安全滑点
 SLIPPAGE = 1 / 100
 # 余额使用上限
-MAX_BALANCE = 97 / 100
+MAX_BALANCE = 99 / 100
 
 
 # 本轮开始之前的预留秒数，小于预留秒数则顺延至下轮
