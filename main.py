@@ -9,8 +9,6 @@ from exchangeConfig import *
 from functions import *
 from settings import *
 
-# pd.set_option('expand_frame_repr', False)  # 当列太多时不换行
-# pd.set_option('display.max_rows', 5000)  # 最多显示数据的行数
 pd.set_option("display.unicode.ambiguous_as_wide", True)
 pd.set_option("display.unicode.east_asian_width", True)
 logger = logging.getLogger("app.main")
@@ -87,12 +85,11 @@ def main():
             logger.info(f"本周期出现交易信号,开始下单！")
             orderList = placeOrder(ex, sig, markets)
             orderListStr = "\n".join(str(i) for i in orderList)
-            sendAndPrintInfo(f"{STRATEGY_NAME}: 本周期出现交易信号:\n{sig}\n\n订单执行成功：\n{orderListStr}")
-        # else:
-        #     logger.info(f"所有币种因子均小于涨幅下限{MIN_CHANGE*100}%,本周期空仓。")
-        #     orderList = closePosition(ex, openPosition)
-        #     if orderList: sendAndPrintInfo(f"{STRATEGY_NAME}: 所有币种涨幅小于0,本周期空仓,清仓执行成功：\n{orderList}")
-
+            sendAndPrintInfo(f"{STRATEGY_NAME}: 本周期出现交易信号:\n{sig})")
+            if orderListStr:
+                sendAndPrintInfo(f"{STRATEGY_NAME}: 订单执行成功:\n{orderListStr})")
+            else:
+                sendAndPrintError(f"{STRATEGY_NAME}: 没有订单信息，请检查日志。")
 
         # 下单后更新持仓状态,发送报告
         if IS_TEST:

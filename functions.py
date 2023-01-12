@@ -607,8 +607,9 @@ def placeOrder(exchange, signal, markets):
                         time.sleep(SLEEP_SHORT)
 
             except Exception as e:
-                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})开仓单下单出错。程序不退出。请检查: {e}")
+                sendAndPrintError(f"{STRATEGY_NAME}: placeOrder({s})开仓单下单出错，跳过该币种。程序不退出。请检查: {e}")
                 logger.exception(e)
+                continue
 
             # 开仓成功后，下固定止损单
             if ENABLE_SL:
