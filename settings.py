@@ -1,6 +1,6 @@
 # 策略命名
 STRATEGY_NAME = "鹤"
-IS_TEST = True
+IS_TEST = False
 
 # 轮动池黑白名单,格式"BTC/USDT"
 SYMBOLS_WHITE = []
