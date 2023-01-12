@@ -65,7 +65,9 @@ def main():
         # 并行获取轮动池的最新k线
         timeStart = time.time()
         singleGetKlines = partial(getKlines, EXCHANGE, LEVEL, NEW_KLINE_NUM)
-        with Pool(processes=min(cpu_count(), len(symbols))) as pool:
+        pNum = min(cpu_count(), len(symbols))
+        logger.info(f"开启多进程数量:{pNum}")
+        with Pool(processes=pNum) as pool:
             kNew = pool.map(singleGetKlines, [[symbol] for symbol in symbols])
         # 把kNew从一个字典的列表,转换成一个字典：[{'a': 1}, {'b': 2}]->{'a': 1, 'b': 2}
         kNew = {list(i.keys())[0]:list(i.values())[0] for i in kNew}
