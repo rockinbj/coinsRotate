@@ -657,6 +657,7 @@ def placeOrder(exchange, signal, markets):
                             "type": "TRAILING_STOP_MARKET",
                             "quantity": min(quantityTotal, maxLimit),
                             "callbackRate": TP_PERCENT*100,
+                            "workingType": "CONTRACT_PRICE",
                             "reduceOnly": True,
                         }
                         logger.debug(f"{s}跟踪止盈订单参数:{tpPara}")
